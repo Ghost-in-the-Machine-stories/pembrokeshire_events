@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pembrokeshire Community Event Planner & Map</title>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-panel: #1e293b;
+      --accent: #06b6d4;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-dark); color: var(--text); height: 100vh; overflow: hidden; }
+
+    .app-container { display: flex; height: 100vh; width: 100vw; }
+
+    /* Left Sidebar Panel */
+    .sidebar { width: 440px; height: 100%; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 1000; box-shadow: 4px 0 15px rgba(0,0,0,0.3); flex-shrink: 0; }
+    .sidebar-header { padding: 1.25rem; border-bottom: 1px solid var(--border); }
+    .sidebar-header h1 { font-size: 1.15rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
+    .sidebar-header p { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    /* Controls & Filters */
+    .filter-box { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.75rem; background: rgba(15, 23, 42, 0.4); }
+    .filter-row { display: flex; gap: 0.5rem; }
+    .form-control { width: 100%; padding: 0.5rem 0.75rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 0.5rem; color: var(--text); font-size: 0.8rem; outline: none; }
+    .form-control:focus { border-color: var(--accent); }
+
+    /* Category Pill Buttons */
+    .category-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.25rem; }
+    .pill { font-size: 0.7rem; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: 1rem; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+    .pill:hover, .pill.active { background: var(--accent); color: var(--bg-dark); border-color: var(--accent); }
+
+    /* Event List */
+    .event-list { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.85rem; }
+    .event-card { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; transition: all 0.2s ease; cursor: pointer; }
+    .event-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15); }
+    .event-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
+    .event-date { font-size: 0.7rem; font-weight: 800; color: var(--accent); text-transform: uppercase; }
+    .event-tag { font-size: 0.65rem; background: #334155; padding: 0.15rem 0.4rem; border-radius: 0.25rem; color: #cbd5e1; }
+    .event-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem; line-height: 1.3; }
+    .event-location { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem; }
+    
+    .event-details-row { display: flex; gap: 0.5rem; font-size: 0.7rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+    .badge-price { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-weight: 600; }
+    .badge-restriction { background: rgba(245, 158, 11, 0.15); color: #fbbf24; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-weight: 600; }
+    .badge-zoom { background: rgba(6, 182, 212, 0.15); color: var(--accent); padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-weight: 700; border: 1px solid rgba(6, 182, 212, 0.3); }
+
+    .event-link-btn { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--bg-dark); background: var(--accent); padding: 0.4rem 0.75rem; border-radius: 0.35rem; text-decoration: none; transition: opacity 0.2s; }
+    .event-link-btn:hover { opacity: 0.9; }
+
+    .map-instructions { background: rgba(6, 182, 212, 0.1); border-left: 3px solid var(--accent); padding: 0.5rem 0.75rem; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; border-radius: 0.25rem; }
+
+    .map-container { flex: 1; height: 100%; position: relative; }
+    #map { height: 100%; width: 100%; background: #0f172a; }
+
+    /* Modal for adding events */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.8); z-index: 2000; justify-content: center; align-items: center; }
+    .modal-content { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 0.75rem; width: 420px; padding: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .modal-content h3 { color: var(--accent); margin-bottom: 1rem; font-size: 1.1rem; }
+    .modal-form-group { margin-bottom: 0.75rem; }
+    .modal-form-group label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .modal-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; }
+    .btn { flex: 1; padding: 0.5rem; border-radius: 0.35rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: none; }
+    .btn-primary { background: var(--accent); color: var(--bg-dark); }
+    .btn-secondary { background: var(--border); color: var(--text); }
+
+    @media (max-width: 768px) {
+      .app-container { flex-direction: column-reverse; }
+      .sidebar { width: 100%; height: 45vh; }
+      .map-container { height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>Pembrokeshire Event Planner</h1>
+      <p>Upcoming community activities, pricing & holiday guides</p>
+    </div>
+
+    <div class="filter-box">
+      <div class="map-instructions">💡 <b>Tip:</b> Click anywhere on the map to add a custom event!</div>
+      <input type="text" id="searchInput" class="form-control" placeholder="Search events, venues, towns..." oninput="filterEvents()">
+      
+      <div class="filter-row">
+        <select id="townFilter" class="form-control" onchange="filterEvents()">
+          <option value="ALL">All Towns</option>
+        </select>
+      </div>
+
+      <div class="filter-row" style="font-size: 0.75rem; color: var(--text-muted); align-items: center;">
+        <span>From:</span> <input type="date" id="dateFrom" class="form-control" onchange="filterEvents()">
+        <span>To:</span> <input type="date" id="dateTo" class="form-control" onchange="filterEvents()">
+      </div>
+
+      <div class="category-pills" id="categoryPills">
+        <span class="pill active" onclick="setCategory('ALL', this)">All</span>
+        <span class="pill" onclick="setCategory('Halloween', this)">🎃 Halloween</span>
+        <span class="pill" onclick="setCategory('Christmas', this)">🎄 Christmas</span>
+        <span class="pill" onclick="setCategory('Sports', this)">⚽ Sports</span>
+        <span class="pill" onclick="setCategory('School Hol/Family', this)">🎒 Family/Hols</span>
+        <span class="pill" onclick="setCategory('Entertainment', this)">🎵 Entertainment</span>
+      </div>
+    </div>
+
+    <div id="eventList" class="event-list"></div>
+  </aside>
+
+  <main class="map-container">
+    <div id="map"></div>
+  </main>
+</div>
+
+<!-- Modal for adding custom event -->
+<div id="eventModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3>Add Custom Event</h3>
+    <form id="customEventForm" onsubmit="saveCustomEvent(event)">
+      <div class="modal-form-group">
+        <label>Event Title</label>
+        <input type="text" id="modalTitle" class="form-control" required placeholder="e.g. Community Bonfire">
+      </div>
+      <div class="modal-form-group">
+        <label>Town / Area</label>
+        <input type="text" id="modalTown" class="form-control" required placeholder="e.g. Narberth, Saundersfoot, Pembroke...">
+      </div>
+      <div class="modal-form-group">
+        <label>Venue / Address</label>
+        <input type="text" id="modalAddress" class="form-control" required placeholder="e.g. Queens Hall">
+      </div>
+      
+      <div class="filter-row modal-form-group">
+        <div style="flex: 1;">
+          <label>Start Date</label>
+          <input type="date" id="modalDateFrom" class="form-control" required>
+        </div>
+        <div style="flex: 1;">
+          <label>End Date</label>
+          <input type="date" id="modalDateTo" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="modal-form-group">
+        <label>Category</label>
+        <select id="modalCategory" class="form-control">
+          <option value="Community">Community</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Sports">Sports</option>
+          <option value="School Hol/Family">School Hol/Family</option>
+          <option value="Halloween">Halloween</option>
+          <option value="Christmas">Christmas</option>
+        </select>
+      </div>
+      <div class="modal-form-group">
+        <label>Price Range</label>
+        <input type="text" id="modalPrice" class="form-control" value="Free">
+      </div>
+      <input type="hidden" id="modalLat">
+      <input type="hidden" id="modalLng">
+      
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Event</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let allEvents = [];
+  let selectedCategory = 'ALL';
+  let mapMarkers = [];
+
+  const map = L.map('map').setView([51.8000, -4.9000], 10);
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  map.on('click', (e) => {
+    document.getElementById('modalLat').value = e.latlng.lat;
+    document.getElementById('modalLng').value = e.latlng.lng;
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('modalDateFrom').value = todayStr;
+    document.getElementById('modalDateTo').value = todayStr;
+    document.getElementById('eventModal').style.display = 'flex';
+  });
+
+  function closeModal() {
+    document.getElementById('eventModal').style.display = 'none';
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date();
+    const oneYearAhead = new Date();
+    oneYearAhead.setFullYear(today.getFullYear() + 1);
+
+    document.getElementById('dateFrom').value = today.toISOString().split('T')[0];
+    document.getElementById('dateTo').value = oneYearAhead.toISOString().split('T')[0];
+
+    fetchLiveEvents();
+  });
+
+  async function fetchLiveEvents() {
+    try {
+      const response = await fetch('events.json');
+      let serverEvents = await response.json();
+      const localCustom = JSON.parse(localStorage.getItem('custom_pembrokeshire_events') || '[]');
+      allEvents = [...serverEvents, ...localCustom];
+      
+      populateTownDropdown();
+      filterEvents();
+    } catch (e) {
+      console.error("Could not load events feed:", e);
+      document.getElementById('eventList').innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:2rem;">Run python ingest_events.py to generate events.json</div>';
+    }
+  }
+
+  function populateTownDropdown() {
+    const townSelect = document.getElementById('townFilter');
+    const towns = new Set();
+
+    allEvents.forEach(e => {
+      if (e.town && e.town !== 'Pembrokeshire') {
+        towns.add(e.town.trim());
+      }
+    });
+
+    const sortedTowns = Array.from(towns).sort();
+    townSelect.innerHTML = '<option value="ALL">All Towns</option>';
+    sortedTowns.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      townSelect.appendChild(opt);
+    });
+  }
+
+  function saveCustomEvent(e) {
+    e.preventDefault();
+    const newEvent = {
+      title: document.getElementById('modalTitle').value,
+      town: document.getElementById('modalTown').value,
+      address: document.getElementById('modalAddress').value,
+      lat: parseFloat(document.getElementById('modalLat').value),
+      lng: parseFloat(document.getElementById('modalLng').value),
+      dateFrom: document.getElementById('modalDateFrom').value,
+      dateTo: document.getElementById('modalDateTo').value,
+      date: document.getElementById('modalDateFrom').value,
+      time: "10:00 BST",
+      originatorUrl: "#",
+      category: document.getElementById('modalCategory').value,
+      priceRange: document.getElementById('modalPrice').value,
+      restrictions: "All Ages"
+    };
+
+    let localCustom = JSON.parse(localStorage.getItem('custom_pembrokeshire_events') || '[]');
+    localCustom.push(newEvent);
+    localStorage.setItem('custom_pembrokeshire_events', JSON.stringify(localCustom));
+
+    allEvents.push(newEvent);
+    closeModal();
+    document.getElementById('customEventForm').reset();
+    populateTownDropdown();
+    filterEvents();
+  }
+
+  function setCategory(cat, element) {
+    selectedCategory = cat;
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    element.classList.add('active');
+    filterEvents();
+  }
+
+  function filterEvents() {
+    const searchText = document.getElementById('searchInput').value.toLowerCase();
+    const selectedTown = document.getElementById('townFilter').value;
+    const filterFrom = document.getElementById('dateFrom').value;
+    const filterTo = document.getElementById('dateTo').value;
+
+    let filtered = allEvents.filter(e => {
+      const matchesSearch = e.title.toLowerCase().includes(searchText) || e.address.toLowerCase().includes(searchText);
+      
+      let matchesTown = selectedTown === 'ALL';
+      if (!matchesTown && e.town) {
+        if (selectedTown.toLowerCase() === 'pembroke') {
+          matchesTown = e.town.toLowerCase() === 'pembroke';
+        } else {
+          matchesTown = e.town.toLowerCase().includes(selectedTown.toLowerCase());
+        }
+      }
+
+      const matchesCat = selectedCategory === 'ALL' || e.category === selectedCategory || (selectedCategory === 'Entertainment' && e.category.includes('Entertainment'));
+      
+      const eStart = e.dateFrom || e.date;
+      const eEnd = e.dateTo || e.date;
+      const matchesDate = (!filterFrom || eEnd >= filterFrom) && (!filterTo || eStart <= filterTo);
+
+      return matchesSearch && matchesTown && matchesCat && matchesDate;
+    });
+
+    renderApp(filtered);
+  }
+
+  function renderApp(eventsToDisplay) {
+    mapMarkers.forEach(m => map.removeLayer(m));
+    mapMarkers = [];
+
+    const listContainer = document.getElementById('eventList');
+    listContainer.innerHTML = '';
+
+    if (eventsToDisplay.length === 0) {
+      listContainer.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:2rem;">No upcoming events found for this filter.</div>';
+      return;
+    }
+
+    eventsToDisplay.sort((a, b) => new Date(a.dateFrom || a.date) - new Date(b.dateFrom || b.date));
+
+    const locationGroups = {};
+    eventsToDisplay.forEach(event => {
+      const card = document.createElement('div');
+      card.className = 'event-card';
+      
+      const dateDisplay = (event.dateFrom && event.dateTo && event.dateFrom !== event.dateTo) 
+        ? `📅 ${event.dateFrom} to ${event.dateTo}` 
+        : `📅 ${event.date || event.dateFrom}`;
+
+      card.innerHTML = `
+        <div class="event-meta">
+          <span class="event-date">${dateDisplay}</span>
+          <span class="event-tag">${event.category}</span>
+        </div>
+        <div class="event-title">${event.title}</div>
+        <div class="event-location">📍 ${event.address}</div>
+        <div class="event-details-row">
+          <span class="badge-zoom">🔍 Zoom to Location</span>
+          <span class="badge-price">🏷️ ${event.priceRange || 'Check Website'}</span>
+          <span class="badge-restriction">👶 ${event.restrictions || 'All Ages'}</span>
+        </div>
+        <a href="${event.originatorUrl}" target="_blank" rel="noopener" class="event-link-btn">View Original Post ↗</a>
+      `;
+
+      if (event.lat != null && event.lng != null) {
+        card.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'A') {
+            map.flyTo([event.lat, event.lng], 15, { duration: 1.2 });
+          }
+        });
+        
+        const key = `${event.lat},${event.lng}`;
+        if (!locationGroups[key]) locationGroups[key] = [];
+        locationGroups[key].push(event);
+      }
+
+      listContainer.appendChild(card);
+    });
+
+    Object.keys(locationGroups).forEach(key => {
+      const [lat, lng] = key.split(',').map(Number);
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      const group = locationGroups[key];
+      
+      let popupContent = `<div style="color:#0f172a; font-family:sans-serif; max-width:240px;">`;
+      if (group.length > 1) {
+        popupContent += `<strong style="font-size:0.9rem; color:#0284c7;">📌 ${group.length} Events at this Venue</strong><hr style="margin:4px 0;">`;
+      }
+
+      group.forEach(ev => {
+        const popDate = (ev.dateFrom && ev.dateTo && ev.dateFrom !== ev.dateTo) ? `${ev.dateFrom} to ${ev.dateTo}` : ev.date;
+        popupContent += `
+          <div style="margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+            <strong style="font-size:0.85rem;">${ev.title}</strong><br>
+            <span style="font-size:0.7rem; color:#475569;">📅 ${popDate} | 🏷️ ${ev.priceRange}</span><br>
+            <span style="font-size:0.7rem; color:#b45309;">👶 ${ev.restrictions}</span><br>
+            <a href="${ev.originatorUrl}" target="_blank" style="font-size:0.7rem; font-weight:bold; color:#0284c7;">Details ↗</a>
+          </div>
+        `;
+      });
+      popupContent += `</div>`;
+
+      let markerIcon = L.defaultIcon;
+      if (group.length > 1) {
+        markerIcon = L.divIcon({
+          className: 'custom-badge-marker',
+          html: `<div style="background:#06b6d4; color:#0f172a; font-weight:800; font-size:11px; padding:4px 8px; border-radius:12px; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.3);">${group.length}</div>`,
+          iconSize: [24, 24]
+        });
+      }
+
+      const marker = L.marker([lat, lng], markerIcon !== L.defaultIcon ? { icon: markerIcon } : {}).addTo(map);
+      marker.bindPopup(popupContent);
+      mapMarkers.push(marker);
+    });
+  }
+</script>
+</body>
+</html>

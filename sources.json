@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Pembroke Castle",
+    "url": "https://pembrokecastle.co.uk/events/",
+    "category": "Entertainment/Heritage",
+    "default_town": "Pembroke",
+    "default_lat": 51.6764,
+    "default_lng": -4.9206
+  },
+  {
+    "name": "Visit Pembrokeshire",
+    "url": "https://www.visitpembrokeshire.com/whats-on",
+    "category": "Tourism/Regional",
+    "default_town": "Haverfordwest",
+    "default_lat": 51.8014,
+    "default_lng": -4.9692
+  },
+  {
+    "name": "Picton Castle and Gardens",
+    "url": "https://pictoncastle.co.uk/events/",
+    "category": "Heritage/Entertainment",
+    "default_town": "Haverfordwest",
+    "default_lat": 51.7885,
+    "default_lng": -4.8966
+  },
+  {
+    "name": "The Queens Hall Narberth",
+    "url": "https://thequeenshall.org.uk/whats-on",
+    "category": "Music/Venue",
+    "default_town": "Narberth",
+    "default_lat": 51.7975,
+    "default_lng": -4.7423
+  },
+  {
+    "name": "HaverHub Haverfordwest",
+    "url": "https://haverhub.org.uk/events/",
+    "category": "Community/Venue",
+    "default_town": "Haverfordwest",
+    "default_lat": 51.8009,
+    "default_lng": -4.9701
+  },
+  {
+    "name": "Cardigan Castle",
+    "url": "https://cardigancastle.com/events/",
+    "category": "Heritage/Entertainment",
+    "default_town": "Cardigan",
+    "default_lat": 52.0833,
+    "default_lng": -4.6588
+  },
+  {
+    "name": "Milford Waterfront",
+    "url": "https://www.milfordwaterfront.co.uk/whats-on",
+    "category": "Community/Tourism",
+    "default_town": "Milford Haven",
+    "default_lat": 51.7126,
+    "default_lng": -5.0341
+  }
+]
